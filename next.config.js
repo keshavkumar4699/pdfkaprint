@@ -9,6 +9,17 @@ const nextConfig = {
       "logos-world.net",
     ],
   },
+  webpack: (config) => {
+    // Add worker-loader
+    config.module.rules.push({
+      test: /pdf\.worker\.(min\.)?js/,
+      type: "asset/resource",
+    });
+    
+    config.resolve.alias.canvas = false;
+    
+    return config;
+  },
 };
 
 module.exports = nextConfig;
