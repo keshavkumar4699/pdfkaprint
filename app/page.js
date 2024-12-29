@@ -52,9 +52,6 @@ export default function Home() {
       </Suspense>
       <main className="min-h-screen p-12 pb-24 text-center" data-theme="light">
         <section className="max-w-5xl mx-auto space-y-8">
-          <h1 className="text-3xl md:text-4xl font-extrabold">
-            Upload Multiple PDFs 📚
-          </h1>
           <div className="flex flex-col items-center gap-4">
             {selectedFiles.length === 0 ? (
               // Show initial upload button when no files are selected
@@ -63,7 +60,7 @@ export default function Home() {
               </label>
             ) : (
               // Show the grid and add more button when files exist
-              <div className="w-full space-y-6">
+              <div className="w-full space-y-6"> 
                 <PDFGrid 
                   files={selectedFiles}
                   onRemove={handleRemoveFile}
