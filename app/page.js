@@ -1,48 +1,77 @@
 "use client";
-import { Suspense, useState } from 'react';
+import { Suspense, useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 
-const PDFGrid = dynamic(() => import('@/components/PDFGrid'), {
+const PDFGrid = dynamic(() => import("@/components/PDFGrid"), {
   ssr: false,
-  loading: () => <div>Loading PDF preview...</div>
+  loading: () => <div>Loading PDF preview...</div>,
 });
 
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [combinedPdfUrl, setCombinedPdfUrl] = useState(null);
 
   const handleFileUpload = async (event) => {
     if (!event.target.files) return;
-    
+
     const files = Array.from(event.target.files);
-    const pdfFiles = files.filter(file => file.type === 'application/pdf');
-    
+    const pdfFiles = files.filter((file) => file.type === "application/pdf");
+
     // Append new files to existing ones
-    setSelectedFiles(prevFiles => [...prevFiles, ...pdfFiles]);
-   
+    setSelectedFiles((prevFiles) => [...prevFiles, ...pdfFiles]);
+
     const formData = new FormData();
     pdfFiles.forEach((file, index) => {
       formData.append(`pdf-${index}`, file);
     });
-    
+
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      const response = await fetch("/api/upload", {
+        method: "POST",
         body: formData,
       });
       const data = await response.json();
-      console.log('Upload successful:', data);
+      console.log("Upload successful:", data);
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error("Upload failed:", error);
     }
-    
+
     // Reset the input value to allow selecting the same file again
-    event.target.value = '';
+    event.target.value = "";
   };
 
   const handleRemoveFile = (index) => {
-    setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+    setSelectedFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
+  };
+
+  const handleCombinePDFs = async () => {
+    if (selectedFiles.length === 0) return;
+
+    const formData = new FormData();
+    selectedFiles.forEach((file, index) => {
+      formData.append(`pdf-${index}`, file);
+    });
+
+    try {
+      const response = await fetch("/api/combine-pdfs", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setCombinedPdfUrl(url);
+
+      console.log("PDF combination successful, URL created:", url); // Debug log
+    } catch (error) {
+      console.error("PDF combination failed:", error);
+    }
   };
 
   return (
@@ -54,36 +83,75 @@ export default function Home() {
         <section className="max-w-5xl mx-auto space-y-8">
           <div className="flex flex-col items-center gap-4">
             {selectedFiles.length === 0 ? (
-              // Show initial upload button when no files are selected
               <label htmlFor="pdf-upload" className="btn btn-primary btn-wide">
                 Select PDF Files
               </label>
             ) : (
-              // Show the grid and add more button when files exist
-              <div className="w-full space-y-6"> 
-                <PDFGrid 
-                  files={selectedFiles}
-                  onRemove={handleRemoveFile}
-                />
-                <label 
-                  htmlFor="pdf-upload" 
-                  className="btn btn-outline btn-primary inline-flex items-center gap-2"
-                >
-                  <svg 
-                    className="w-5 h-5" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
+              <div className="w-full space-y-6">
+                <PDFGrid files={selectedFiles} onRemove={handleRemoveFile} />
+                <div className="flex justify-center gap-4">
+                  <label
+                    htmlFor="pdf-upload"
+                    className="btn btn-outline btn-primary inline-flex items-center gap-2"
                   >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  Add More PDFs
-                </label>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    Add More PDFs
+                  </label>
+                  <button
+                    onClick={handleCombinePDFs}
+                    className="btn btn-primary inline-flex items-center gap-2"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                    Combine PDFs
+                  </button>
+                </div>
+                {combinedPdfUrl && (
+                  <div className="mt-4 space-y-4">
+                    <div className="flex justify-center gap-4">
+                      <a
+                        href={combinedPdfUrl}
+                        download="combined.pdf"
+                        className="btn btn-success"
+                      >
+                        Download Combined PDF
+                      </a>
+                    </div>
+                    <div className="border rounded p-4">
+                      <h3 className="font-bold mb-2">Combined PDF Preview</h3>
+                      <object
+                        data={combinedPdfUrl}
+                        type="application/pdf"
+                        className="w-full h-[600px]"
+                      >
+                        <p>Your browser does not support PDF preview.</p>
+                      </object>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             <input
