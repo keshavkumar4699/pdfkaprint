@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import dynamic from "next/dynamic";
@@ -12,6 +12,16 @@ const PDFGrid = dynamic(() => import("@/components/PDFGrid"), {
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [combinedPdfUrl, setCombinedPdfUrl] = useState(null);
+
+  const [oddPagesUrl, setOddPagesUrl] = useState(null);
+  const [evenPagesUrl, setEvenPagesUrl] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      if (oddPagesUrl) URL.revokeObjectURL(oddPagesUrl);
+      if (evenPagesUrl) URL.revokeObjectURL(evenPagesUrl);
+    };
+  }, [oddPagesUrl, evenPagesUrl]);
 
   const handleFileUpload = async (event) => {
     if (!event.target.files) return;
@@ -46,6 +56,20 @@ export default function Home() {
     setSelectedFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
   };
 
+  // Add this helper function to split the multipart response
+  async function splitMultipartResponse(blob, boundary) {
+    const text = await blob.text();
+    const parts = text
+      .split(`--${boundary}`)
+      .filter((part) => part.includes("Content-Type"));
+
+    return parts.map((part) => {
+      const [headers, content] = part.split("\r\n\r\n");
+      const binaryContent = content.split("\r\n")[0];
+      return new Blob([binaryContent], { type: "application/pdf" });
+    });
+  }
+
   const handleCombinePDFs = async () => {
     if (selectedFiles.length === 0) return;
 
@@ -64,11 +88,23 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      setCombinedPdfUrl(url);
+      const data = await response.json();
 
-      console.log("PDF combination successful, URL created:", url); // Debug log
+      // Convert base64 to Blob and create URLs
+      const oddPagesBlob = new Blob(
+        [Uint8Array.from(atob(data.oddPages), (c) => c.charCodeAt(0))],
+        { type: "application/pdf" }
+      );
+      const evenPagesBlob = new Blob(
+        [Uint8Array.from(atob(data.evenPages), (c) => c.charCodeAt(0))],
+        { type: "application/pdf" }
+      );
+
+      const oddPagesUrl = URL.createObjectURL(oddPagesBlob);
+      const evenPagesUrl = URL.createObjectURL(evenPagesBlob);
+
+      setOddPagesUrl(oddPagesUrl);
+      setEvenPagesUrl(evenPagesUrl);
     } catch (error) {
       console.error("PDF combination failed:", error);
     }
@@ -129,26 +165,45 @@ export default function Home() {
                     Combine PDFs
                   </button>
                 </div>
-                {combinedPdfUrl && (
+                {oddPagesUrl && evenPagesUrl && (
                   <div className="mt-4 space-y-4">
                     <div className="flex justify-center gap-4">
                       <a
-                        href={combinedPdfUrl}
-                        download="combined.pdf"
+                        href={oddPagesUrl}
+                        download="odd_pages.pdf"
                         className="btn btn-success"
                       >
-                        Download Combined PDF
+                        Download Odd Pages PDF
+                      </a>
+                      <a
+                        href={evenPagesUrl}
+                        download="even_pages.pdf"
+                        className="btn btn-success"
+                      >
+                        Download Even Pages PDF
                       </a>
                     </div>
-                    <div className="border rounded p-4">
-                      <h3 className="font-bold mb-2">Combined PDF Preview</h3>
-                      <object
-                        data={combinedPdfUrl}
-                        type="application/pdf"
-                        className="w-full h-[600px]"
-                      >
-                        <p>Your browser does not support PDF preview.</p>
-                      </object>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="border rounded p-4">
+                        <h3 className="font-bold mb-2">Odd Pages Preview</h3>
+                        <object
+                          data={oddPagesUrl}
+                          type="application/pdf"
+                          className="w-full h-[600px]"
+                        >
+                          <p>Your browser does not support PDF preview.</p>
+                        </object>
+                      </div>
+                      <div className="border rounded p-4">
+                        <h3 className="font-bold mb-2">Even Pages Preview</h3>
+                        <object
+                          data={evenPagesUrl}
+                          type="application/pdf"
+                          className="w-full h-[600px]"
+                        >
+                          <p>Your browser does not support PDF preview.</p>
+                        </object>
+                      </div>
                     </div>
                   </div>
                 )}

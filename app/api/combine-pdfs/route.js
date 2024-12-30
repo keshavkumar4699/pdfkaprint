@@ -2,10 +2,29 @@ import { NextResponse } from 'next/server';
 import { PDFDocument, StandardFonts, PageSizes } from 'pdf-lib';
 
 async function createBlankPage() {
-  // Create a new PDF document with a single blank page
   const blankPdf = await PDFDocument.create();
   blankPdf.addPage(PageSizes.A4);
   return blankPdf;
+}
+
+async function splitIntoEvenOddPdfs(pdfDoc) {
+  // Create two new PDFs for even and odd pages
+  const evenPagesPdf = await PDFDocument.create();
+  const oddPagesPdf = await PDFDocument.create();
+  
+  const totalPages = pdfDoc.getPageCount();
+  
+  // Copy pages to respective PDFs (page numbers start at 0)
+  for (let i = 0; i < totalPages; i++) {
+    const targetPdf = i % 2 === 0 ? oddPagesPdf : evenPagesPdf; // i=0 is first page (odd)
+    const [copiedPage] = await targetPdf.copyPages(pdfDoc, [i]);
+    targetPdf.addPage(copiedPage);
+  }
+  
+  return {
+    evenPages: await evenPagesPdf.save(),
+    oddPages: await oddPagesPdf.save()
+  };
 }
 
 export async function POST(req) {
@@ -46,19 +65,18 @@ export async function POST(req) {
       }
     }
 
-    // Save the merged PDF
-    const mergedPdfBytes = await mergedPdf.save();
-    
-    return new NextResponse(mergedPdfBytes, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename=combined.pdf',
-      },
+    // Split the merged PDF into even and odd pages
+    const { evenPages, oddPages } = await splitIntoEvenOddPdfs(mergedPdf);
+
+    // Return JSON with base64 encoded PDFs
+    return NextResponse.json({
+      oddPages: Buffer.from(oddPages).toString('base64'),
+      evenPages: Buffer.from(evenPages).toString('base64')
     });
   } catch (error) {
-    console.error('PDF combination error:', error);
+    console.error('PDF processing error:', error);
     return NextResponse.json(
-      { error: 'PDF combination failed' }, 
+      { error: 'PDF processing failed' }, 
       { status: 500 }
     );
   }
