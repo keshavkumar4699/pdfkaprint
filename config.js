@@ -7,7 +7,7 @@ const config = {
   appDescription:
     "The one stop solution for all your pdf needs.",
   // REQUIRED (no https://, not trialing slash at the end, just the naked domain)
-  domainName: "pdfkaprint.in",
+  domainName: "pdfkaprint.site",
   crisp: {
     // Crisp website ID. IF YOU DON'T USE CRISP: just remove this => Then add a support email in this config file (resend.supportEmail) otherwise customer support won't work.
     id: "",
