@@ -11,7 +11,6 @@ const PDFGrid = dynamic(() => import("@/components/PDFGrid"), {
 
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [combinedPdfUrl, setCombinedPdfUrl] = useState(null);
 
   const [oddPagesUrl, setOddPagesUrl] = useState(null);
   const [evenPagesUrl, setEvenPagesUrl] = useState(null);
@@ -55,20 +54,6 @@ export default function Home() {
   const handleRemoveFile = (index) => {
     setSelectedFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
   };
-
-  // Add this helper function to split the multipart response
-  async function splitMultipartResponse(blob, boundary) {
-    const text = await blob.text();
-    const parts = text
-      .split(`--${boundary}`)
-      .filter((part) => part.includes("Content-Type"));
-
-    return parts.map((part) => {
-      const [headers, content] = part.split("\r\n\r\n");
-      const binaryContent = content.split("\r\n")[0];
-      return new Blob([binaryContent], { type: "application/pdf" });
-    });
-  }
 
   const handleCombinePDFs = async () => {
     if (selectedFiles.length === 0) return;

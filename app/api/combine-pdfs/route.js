@@ -49,7 +49,7 @@ export async function POST(req) {
     // Process each PDF file
     for (const file of files) {
       const fileBuffer = await file.arrayBuffer();
-      const pdf = await PDFDocument.load(fileBuffer);
+      const pdf = await PDFDocument.load(fileBuffer, { ignoreEncryption: true } );
       const pageIndices = pdf.getPageIndices();
       
       // Copy all pages from the current PDF
